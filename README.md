@@ -47,12 +47,13 @@ Every notification is signed on the **exact raw body** (header `X-DzWallet-Signa
 app.post('/dzwallet/ipn', express.raw({ type: '*/*' }), (req, res) => {
   let n;
   try {
-    n = dz.verifyNotification(req.body, req.headers);   // signature + 5 minute window; throws InvalidSignatureError
+    n = dz.verifyNotification(req.body, req.headers, { requireV2: true });   // signature + 5 minute window; throws InvalidSignatureError
   } catch (e) {
     return res.sendStatus(403);
   }
   if (alreadyProcessed(n.eventId)) return res.sendStatus(200);      // unique constraint on event id
   const order = findOrder(n.ipn.identifier);
+  if (!order) return res.sendStatus(404);
   if (Math.abs(Number(n.ipn.amount) - order.total) > 0.005) return res.sendStatus(400);   // amount must match YOUR order
   if (n.ipn.isSuccess && !order.paid) markPaid(order, n.ipn.trx);   // fulfil once
   recordEvent(n.eventId);
@@ -63,7 +64,7 @@ app.post('/dzwallet/ipn', express.raw({ type: '*/*' }), (req, res) => {
 - `verifyNotification(rawBody, headers, { tolerance = 300, requireV2 = false })` uses the v2 signature when DzWallet sends it and falls back to the older `signature` field (uppercase HMAC of `data.amount + identifier`) otherwise. Pass `requireV2: true` to refuse the older one.
 - The event id is read from the signed body, so a replayed request cannot dodge the duplicate check by changing a header. It is the same on every retry and on manual redelivery.
 - Lower level: `verifyWebhook(rawBody, header)` returns `{ timestamp, eventId }`; `parseIpnForm(raw)` turns the body into the nested object `verifyIpn` expects.
-- Retries: DzWallet retries unsuccessful deliveries with increasing delays for about 12 hours. Failed deliveries can be resent from the merchant dashboard (Webhook Log).
+- Retries: DzWallet retries unsuccessful deliveries with increasing delays for up to 15 attempts. Failed deliveries can be resent from the merchant dashboard (Webhook Log).
 
 ## Status and payment links
 
