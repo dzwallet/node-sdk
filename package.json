@@ -1,11 +1,12 @@
 {
   "name": "dzwallet-node",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Node.js SDK for the DzWallet payment API (CIB / Edahabia via SATIM, payment links and QR codes). No dependencies.",
   "main": "src/index.js",
   "types": "src/index.d.ts",
   "files": [
     "src",
+    "examples",
     "README.md",
     "LICENSE"
   ],
